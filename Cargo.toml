@@ -2,8 +2,16 @@
 name = "pyo3-err-bridge"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 
 [dependencies]
-backtrace = "0.3.76"
-error-chain = "0.12.4"
+anyhow = { version = "1.0.102", optional = true }
+btparse = "0.2.0"
 pyo3 = { git = "https://github.com/Icxolu/pyo3", branch = "set-traceback" }
+
+[features]
+anyhow = ["dep:anyhow"]
+
+[dev-dependencies]
+assertables = "9.8.6"
+regex = "1.12.3"

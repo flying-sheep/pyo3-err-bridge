@@ -8,14 +8,25 @@ pub trait ToPyErr {
     fn to_py_err<T: PyTypeInfo>(self, py: Python) -> PyErr;
 }
 
-impl<E> ToPyErr for E
-where
-    E: error_chain::ChainedError,
-{
+#[cfg(feature = "anyhow")]
+impl ToPyErr for anyhow::Error {
     fn to_py_err<T: PyTypeInfo>(self, py: Python) -> PyErr {
         let err = PyErr::new::<T, _>(self.to_string());
-        if let Some(bt) = self.backtrace()
-            && let Some(tb) = to_py_traceback(bt, py)
+        if let Ok(bt) = btparse::deserialize(self.backtrace())
+            && let Some(tb) = to_py_traceback(&bt, py)
+        {
+            err.set_traceback(py, Some(tb));
+        }
+        err
+    }
+}
+
+#[cfg(feature = "eyre")]
+impl ToPyErr for eyre::Report {
+    fn to_py_err<T: PyTypeInfo>(self, py: Python) -> PyErr {
+        let err = PyErr::new::<T, _>(self.to_string());
+        if let Ok(bt) = btparse::deserialize(self.backtrace())
+            && let Some(tb) = to_py_traceback(&bt, py)
         {
             err.set_traceback(py, Some(tb));
         }
@@ -52,7 +63,7 @@ fn mk_traceback<'py>(
     py: Python<'py>,
     name: &str,
     filename: &str,
-    lineno: u32,
+    lineno: usize,
 ) -> Bound<'py, PyTraceback> {
     MK_TRACEBACK
         .call(py, (name, filename, lineno), None)
@@ -63,24 +74,17 @@ fn mk_traceback<'py>(
 }
 
 fn to_py_traceback<'py>(
-    bt: &error_chain::Backtrace,
+    bt: &btparse::Backtrace,
     py: Python<'py>,
 ) -> Option<Bound<'py, PyTraceback>> {
     let mut tb: Option<Bound<'py, PyTraceback>> = None;
-    for frame in bt.frames() {
-        let Some(sym) = frame.symbols().first() else {
-            continue;
-        };
+    for frame in &bt.frames {
         let tb_new = mk_traceback(
             py,
-            sym.name()
-                .map(|s| format!("{s}"))
-                .unwrap_or_else(|| "<unknown>".to_string())
-                .as_str(),
-            sym.filename()
-                .and_then(|p| p.to_str())
+            &frame.function,
+            frame.file.as_ref().map(|f| f.as_str())
                 .unwrap_or("<unknown>"),
-            sym.lineno().unwrap_or(0),
+            frame.line.unwrap_or(0),
         );
         if let Some(tb) = tb {
             tb_new.setattr("tb_next", tb).expect("setattr failed");
@@ -93,15 +97,10 @@ fn to_py_traceback<'py>(
 #[cfg(test)]
 mod tests {
     use pyo3::exceptions::PyRuntimeError;
+    use regex::Regex;
+    use assertables::*;
 
     use super::*;
-    
-    mod test_err {
-        use error_chain::error_chain;
-        error_chain! {
-            errors { FooError }
-        }
-    }
 
     fn format_exc(py: Python, py_err: PyErr) -> PyResult<String> {
         let v: Vec<String> = py
@@ -112,15 +111,16 @@ mod tests {
     }
 
     #[test]
-    fn it_works() -> PyResult<()> {
-        let err = test_err::Error::from_kind(test_err::ErrorKind::FooError);
+    fn anyhow() -> PyResult<()> {
+        let err = anyhow::anyhow!("foo");
+
         Python::initialize();
-        Python::attach(|py| -> PyResult<()> {
+        let out = Python::attach(|py| -> PyResult<String> {
             let py_err = err.to_py_err::<PyRuntimeError>(py);
-            let out = format_exc(py, py_err)?;
-            println!("{out}");
-            assert_eq!(out.as_str(), "");
-            Ok(())
-        })
+            format_exc(py, py_err)
+        })?;
+        
+        assert_is_match!(Regex::new(r#"File "[.]/src/lib.rs", line \d+, in pyo3_err_bridge::tests::anyhow"#).unwrap(), out.as_str());
+        Ok(())
     }
 }

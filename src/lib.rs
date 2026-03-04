@@ -104,7 +104,7 @@ where
     }
 }
 
-#[cfg(feature = "anyhow")]
+#[cfg(feature = "std")]
 impl Backtrace for std::backtrace::Backtrace {
     fn to_py<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyTraceback>> {
         btparse::deserialize(self)
@@ -113,7 +113,7 @@ impl Backtrace for std::backtrace::Backtrace {
     }
 }
 
-#[cfg(feature = "anyhow")]
+#[cfg(feature = "std")]
 impl BacktraceFromFrames for btparse::Backtrace {
     type Frame = btparse::Frame;
     fn iter_frames(&self) -> impl Iterator<Item = &Self::Frame> {
@@ -246,7 +246,7 @@ mod tests {
             format_exc(py, &py_err)
         })?;
 
-        assert_is_match!(Regex::new(r#"File ".+pyo3-err-bridge/src/lib.rs", line \d+, in pyo3_err_bridge\[.*\]::tests::color_eyre"#).unwrap(), out.as_str());
+        assert_is_match!(Regex::new(r#"File ".+pyo3-err-bridge/src/lib.rs", line \d+, in pyo3_err_bridge(\[.*\])?::tests::color_eyre"#).unwrap(), out.as_str());
         Ok(())
     }
 }

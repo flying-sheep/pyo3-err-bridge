@@ -21,19 +21,6 @@ impl ToPyErr for anyhow::Error {
     }
 }
 
-#[cfg(feature = "eyre")]
-impl ToPyErr for eyre::Report {
-    fn to_py_err<T: PyTypeInfo>(self, py: Python) -> PyErr {
-        let err = PyErr::new::<T, _>(self.to_string());
-        if let Ok(bt) = btparse::deserialize(self.backtrace())
-            && let Some(tb) = to_py_traceback(&bt, py)
-        {
-            err.set_traceback(py, Some(tb));
-        }
-        err
-    }
-}
-
 const CODE: &'static CStr = c"
 def mk_traceback(name, filename, lineno):
     import sys

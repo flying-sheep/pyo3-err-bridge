@@ -8,4 +8,5 @@
         }
     },
     "rust-analyzer.cargo.features": "all",
+    "rust-analyzer.check.command": "clippy",
 }

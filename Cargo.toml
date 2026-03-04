@@ -6,11 +6,15 @@ rust-version = "1.85"
 
 [dependencies]
 anyhow = { version = "1.0.102", optional = true }
+backtrace = { version = "0.3.76", optional = true }
 btparse = "0.2.0"
+color-eyre = { version = "0.6.5", default-features = false, optional = true }
+eyre = { version = "0.6.12", default-features = false, optional = true }
 pyo3 = { git = "https://github.com/Icxolu/pyo3", branch = "set-traceback" }
 
 [features]
 anyhow = ["dep:anyhow"]
+color-eyre = ["dep:eyre", "dep:color-eyre", "dep:backtrace"]
 
 [dev-dependencies]
 assertables = "9.8.6"

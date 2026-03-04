@@ -1,0 +1,9 @@
+[package]
+name = "pyo3-err-bridge"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+backtrace = "0.3.76"
+error-chain = "0.12.4"
+pyo3 = { git = "https://github.com/Icxolu/pyo3", branch = "set-traceback" }

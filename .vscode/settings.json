@@ -1,6 +1,6 @@
 {
     "[rust]": {
-        "editor.defaultFormatter": "rust-analyzer",
+        "editor.defaultFormatter": "rust-lang.rust-analyzer",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
             "source.fixAll": "always",
